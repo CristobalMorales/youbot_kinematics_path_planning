@@ -70,14 +70,12 @@ Matrix4d youbot_kinematic::dh_matrix_standard(double a, double alpha, double d, 
 
 Matrix4d youbot_kinematic::forward_kine(double joint_val[], int frame)
 {
-
     Matrix4d A;
     Matrix4d T = Matrix4d::Identity(4, 4);
 
     for(int i = 0;i < frame; i++)
     {
         A = dh_matrix_standard(DH_params[i][0], DH_params[i][1], DH_params[i][2], joint_val[i] + DH_params[i][3]);
-
         T = T * A;
     }
 
@@ -118,7 +116,16 @@ void youbot_kinematic::broadcast_pose(Matrix4d pose)
     pose_br.sendTransform(T);
 }
 
-VectorXd youbot_kinematic::obtain_pose_vector(Matrix4d pose_matrix) {
+VectorXd youbot_kinematic::obtain_pose_vector(Matrix4d pose_matrix) 
+{
+    /**
+     * @brief Transform from a 4D Transformation Matrix to a 6D pose vector
+     * The first three elementos are the position and the last three orientation
+     * 
+     * @param pose_matrix This is the pose matrix that representa a Transformation Matrix
+     * 
+     * @return Pose vector which is pose + orientation in radians (6-size vector)
+     */
     VectorXd pose_vector(6);
     double target_angle = acos((pose_matrix(0,0) + pose_matrix(1,1) + pose_matrix(2,2) - 1)/2);
     pose_vector(0) = pose_matrix(0, 3);
@@ -141,6 +148,13 @@ VectorXd youbot_kinematic::obtain_pose_vector(Matrix4d pose_matrix) {
 
 MatrixXd youbot_kinematic::get_jacobian(double joint_val[])
 {
+    /**
+     * @brief Get the jacobian of each frame
+     * 
+     * @param joint_val The angle of each frame in radians
+     * 
+     * @return The jacobian (a matrix of 6 by 5)
+     */
     MatrixXd jacobian(6,5);
     Matrix4d* forw_kin_matr = new Matrix4d[6];
     Vector3d* z_i = new Vector3d[6];
@@ -164,17 +178,22 @@ MatrixXd youbot_kinematic::get_jacobian(double joint_val[])
     return jacobian;
 }
 
-MatrixXd youbot_kinematic::inverse_kine_closed_form(Matrix4d pose)
-{
-    //Ignore this.
-}
-
 double* youbot_kinematic::inverse_kine_ite(Matrix4d pose, double joint_val[])
 {
+    /**
+     * @brief Compute the inverse kinematic iteratively
+     * 
+     * @param pose Pose matrix of the target position
+     * @param joint_val The angles of each joint in radians
+     * 
+     * @return The angles of each joint after the iteration
+     */
+    // Defining the gamma for updating the state and the error to stop iterate
     double gamma = 0.6;
+    double error_var = 0.000001;
+    // Auxiliar variables
     VectorXd target_pose(6);
     VectorXd current_pose(6);
-    double error_var = 0.000001;
     target_pose = obtain_pose_vector(pose);
     double* joint_val_post = new double[5];
     joint_val_post[0] = joint_val[0]; joint_val_post[1] = joint_val[1]; joint_val_post[2] = joint_val[2];
@@ -186,31 +205,35 @@ double* youbot_kinematic::inverse_kine_ite(Matrix4d pose, double joint_val[])
     int iter_n = 0;
     while (error_var < vari)
     {
+        // Compute forward kinematic for the last joint
         Matrix4d current_pose_matrix = forward_kine(joint_val_post, 5);
+        // Obtain the vector of the pose
         current_pose = obtain_pose_vector(current_pose_matrix);
         pose_error_prev = pose_error;
         if (check_singularity(joint_val_post))
             std::cout << "Is singularity?: " << check_singularity(joint_val_post) << std::endl;
+        // Get the jacobian
         MatrixXd jacobian = get_jacobian(joint_val_post);
         MatrixXd Ide = MatrixXd::Identity(5, 5);
-        MatrixXd fu = (jacobian.transpose()*jacobian + (gamma*gamma)*Ide).inverse()*jacobian.transpose();
+        // Updating the state through the Damped Least Square Method
+        MatrixXd upd_step = (jacobian.transpose()*jacobian + (gamma*gamma)*Ide).inverse()*jacobian.transpose();
         if (iter_n > 10000)
         {
             break;
         }
-        joint_val_post_aux = joint_val_post_aux + fu*(target_pose - current_pose);
+        joint_val_post_aux = joint_val_post_aux + upd_step*(target_pose - current_pose);
         joint_val_post[0] = joint_val_post_aux(0); joint_val_post[1] = joint_val_post_aux(1); 
         joint_val_post[2] = joint_val_post_aux(2); joint_val_post[3] = joint_val_post_aux(3); 
         joint_val_post[4] = joint_val_post_aux(4); 
         pose_error = (target_pose - current_pose).norm();
+        // Compute the variation between current and last state
         vari = abs(pose_error - pose_error_prev);
         iter_n++;
     }
-    std::cout << "Joint N: " << joint_val_post_aux * 180/M_PI << std::endl;
     return joint_val_post;
 }
 
-double* youbot_kinematic::fix_limits(double joint_val[])
+/*double* youbot_kinematic::fix_limits(double joint_val[])
 {
     bool limit_reached = false;
     for (int i = 0; i < 5; i++) 
@@ -228,20 +251,28 @@ double* youbot_kinematic::fix_limits(double joint_val[])
             joint_val[i] = rand_num*interval + joint_limit_min[i];
         }
     }
-}
+}*/
 
-double* youbot_kinematic::norm_angle(double joint_val[]){
+double* youbot_kinematic::norm_angle(double joint_val[])
+{
+    /**
+     * @brief Normalize the angles between -pi and pi
+     * 
+     * @param joint_val The angles of each joint in radians
+     * 
+     * @return The angles of each joint normalised in radians
+     */
     double* new_joint = new double[5];
     for (int i = 0; i < 5; i++) 
     {
-        if (joint_val[i] > 3.14)
-            int t =1;
-        int a = (int)joint_val[i]/(2*M_PI);
-        new_joint[i] = joint_val[i] - ((double)a) * (M_PI);
-        if (new_joint[i] > M_PI) {
+        int n_cycles = (int) joint_val[i] / (2*M_PI);
+        new_joint[i] = joint_val[i] - ((double)n_cycles) * (M_PI);
+        if (new_joint[i] > M_PI) 
+        {
             new_joint[i] = new_joint[i] - 2*M_PI;
         }
-        else if(new_joint[i] < -M_PI) {
+        else if(new_joint[i] < -M_PI) 
+        {
             new_joint[i] = new_joint[i] + 2*M_PI;
         }
     }
@@ -250,13 +281,28 @@ double* youbot_kinematic::norm_angle(double joint_val[]){
 
 bool youbot_kinematic::check_singularity(double joint_val[])
 {
+    /**
+     * @brief Check if the trajectory falls into a singularity
+     * 
+     * @param joint_val The angles of each joint in radians
+     * 
+     * @return Whether the joint angles of the manipulator fall into a singularity or not
+     */
     MatrixXd jacobian = get_jacobian(joint_val);
     MatrixXd Ide = MatrixXd::Identity(5, 5);
     MatrixXd inverse = jacobian.transpose()*jacobian;
     return inverse.determinant() == 0;
 }
 
-double* youbot_kinematic::apply_offset(double joint_val[]) {
+double* youbot_kinematic::apply_offset(double joint_val[])
+{
+    /**
+     * @brief Apply the offset for each joint
+     * 
+     * @param joint_val The angles of each joint in radians
+     * 
+     * @return The angles of each joint in radians plus the offset 
+     */
     double *new_joint = new double[5];
     new_joint[0] = joint_offset[0] - joint_val[0]; 
     new_joint[1] = joint_val[1] + joint_offset[1];

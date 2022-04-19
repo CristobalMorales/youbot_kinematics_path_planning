@@ -292,7 +292,7 @@ int main(int argc, char **argv)
     double time_interval = 1;
     if (checkpoint_data == 1)
     {
-        bag.open("/home/cristobal/catkin_ws/src/comp0127_lab/cw2/cw2q6/src/../bags/data1.bag", rosbag::bagmode::Read);
+        bag.open(MY_BAG_A, rosbag::bagmode::Read);
         std::vector<std::string> topics;
         topics.push_back(std::string("joint_data"));
         rosbag::View view(bag, rosbag::TopicQuery(topics));
@@ -355,7 +355,7 @@ int main(int argc, char **argv)
                 MatrixXd aux_rot = rot_mat_init*((rot_mat_init.inverse()*rot_mat_end).log()*dt*k).exp();
                 aux_matrix << aux_rot, aux_pos;
                 t_matrix << aux_matrix, last_v;
-                std::cout << youbot.obtain_pose_vector(t_matrix) << std::endl;
+                //std::cout << youbot.obtain_pose_vector(t_matrix) << std::endl;
                 double* new_origin_angles = youbot.inverse_kine_ite(t_matrix, origin_angles);
                 double *joint_outcome = youbot.apply_offset(new_origin_angles);
                 tfs = tfs + ceil(20/steps[j]);
@@ -382,7 +382,7 @@ int main(int argc, char **argv)
             0, 0.4};
         double data_points[POINTS_DATA+5][3];
 
-        bag.open("/home/cristobal/catkin_ws/src/comp0127_lab/cw2/cw2q6/src/../bags/data2.bag", rosbag::bagmode::Read);
+        bag.open(MY_BAG_B, rosbag::bagmode::Read);
         std::vector<std::string> topics;
         topics.push_back(std::string("target_position"));
         rosbag::View view(bag, rosbag::TopicQuery(topics));
@@ -422,9 +422,9 @@ int main(int argc, char **argv)
                 origin_angles = youbot.inverse_kine_ite(end_matrix, origin_angles);
                 origin_angles = youbot.norm_angle(origin_angles);
                 origin_angles = youbot.apply_offset(origin_angles);
-                for (int h = 0; h < 5;h++)
-                    std::cout << origin_angles[h]*180/M_PI << std::endl;
-                std::cout << youbot.forward_kine_offset(origin_angles, 5) << std::endl;
+                //for (int h = 0; h < 5;h++)
+                 //   std::cout << origin_angles[h]*180/M_PI << std::endl;
+                //std::cout << youbot.forward_kine_offset(origin_angles, 5) << std::endl;
                 tfs = tfs + 15;//ceil(50/steps[j]);
                 my_pt.time_from_start.sec = tfs;
                 for (int pos = 0; pos<5; pos++)

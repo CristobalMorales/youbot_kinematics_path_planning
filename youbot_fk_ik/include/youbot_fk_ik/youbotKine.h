@@ -33,13 +33,11 @@ public:
     VectorXd obtain_pose_vector(Matrix4d pose);
     double* apply_offset(double joint_val[]);
     MatrixXd get_jacobian(double joint_val[]);
-    MatrixXd inverse_kine_closed_form(Matrix4d pose);
     double* inverse_kine_ite(Matrix4d pose, double joint_val[]);
     bool check_singularity(double joint_val[]);
     Matrix4d dh_matrix_standard(double a, double alpha, double d, double theta);
     double* norm_angle(double joint_val[]);
     double* fix_limits(double joint_val[]);
-    MatrixXd get_jacobian_tras(double joint_val[]);
     double* inverse_kine_ite_trans(Matrix4d pose, double joint_val[]);
     VectorXd obtain_pose_vector_2(Matrix4d pose_matrix);
 };
