@@ -31,3 +31,32 @@ double* youbot_kinematic::apply_offset(double joint_val[])
 
 
 ## path_planning package
+
+This package contains the path planning (dijkstra) routine for the 5 DoF YouBot Manipulator. It contains two differente trials. One with obstacles and the other without obstacles. In order to load each one the next argument in the path_planning.launch file should be modified.
+```
+  <arg name="question" default="1"/> // 1 for no obstacles, 2 otherwise
+```
+
+In this package the next methods were programmed by me.
+
+```
+MatrixXd quaternion_rotation(double q[]) 
+// Compute the rotation matrix from a quaternion
+
+bool intesect_object(double *point) 
+// Determine if a 3D points intersects with an object
+
+void generate_points(double intervals[3][2], double data[POINTS_DATA][3])
+// Generates data points to use path planning algorithm
+
+std::list<double*> connect_points(double data[POINTS_DATA+5][3])
+// Connect points through the nearest neighbor and a distance limit
+
+
+std::list<double*> dijkstra(std::list<double*> links, int init, int end)
+// Apply the Dijkstra algorithm over the connections to reach the desired points
+```
+
+## path_planning package
+
+This package contains the information of the trail (tracked points and trajectory line)
