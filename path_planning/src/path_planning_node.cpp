@@ -26,15 +26,22 @@ struct points {
     Matrix4d transform;
 };
 
-void show_degrees(double points[], char name[]) 
+/*void show_degrees(double points[], char name[]) 
 {
     std::cout << "Angulos de " << name << ": \n" << std::endl;
     for (int i = 0; i<5;i++)
         std::cout << points[i]*180/M_PI << std::endl;
-}
+}*/
 
 MatrixXd quaternion_rotation(double q[]) 
 {
+    /**
+     * @brief Compute the rotation matrix from a quaternion
+     * 
+     * @param q Array of a quaternion
+     * 
+     * @return Rotation matrix 
+     */
     MatrixXd rotation(3,3);
     double qx = q[0];
     double qy = q[1];
@@ -52,37 +59,45 @@ MatrixXd quaternion_rotation(double q[])
     return rotation;
 }
 
-bool intesect_object(double *data) {
+bool intesect_object(double *point) 
+{
+    /**
+     * @brief Determine if a 3D points intersects with an object
+     * 
+     * @param point Reference of a point
+     * 
+     * @return If the points intersect with any of the objects 
+     */
     double object_1[3][2] = { 
         0.25751, 0.37751, 
         0, 0.13, 
-        0, 0.14 };// cilindro 1
+        0, 0.14 };// cylinder 1
     double object_2[3][2] = { 
         -0.378049, -0.278049, 
         -0.276524, -0.176524, 
-        0, 0.08 };// cilindro 0
+        0, 0.08 };// cylinder 0
     double object_3[3][2] = { 
         -0.4118985, -0.2178655,
         -0.200138, -0.1231,
-        0, 0.2};// caja 
+        0, 0.2};// box
     bool intersect = false;
-    if (data[0] > object_1[0][0] && data[0] < object_1[0][1]){
-        if (data[1] > object_1[1][0] && data[1] < object_1[1][1]){
-            if (data[2] > object_1[2][0] && data[2] < object_1[2][1]){
+    if (point[0] > object_1[0][0] && point[0] < object_1[0][1]){
+        if (point[1] > object_1[1][0] && point[1] < object_1[1][1]){
+            if (point[2] > object_1[2][0] && point[2] < object_1[2][1]){
                 intersect = true;
             }
         }
     }
-    if (data[0] > object_2[0][0] && data[0] < object_2[0][1]){
-        if (data[1] > object_2[1][0] && data[1] < object_2[1][1]){
-            if (data[2] > object_2[2][0] && data[2] < object_2[2][1]){
+    if (point[0] > object_2[0][0] && point[0] < object_2[0][1]){
+        if (point[1] > object_2[1][0] && point[1] < object_2[1][1]){
+            if (point[2] > object_2[2][0] && point[2] < object_2[2][1]){
                 intersect = true;
             }
         }
     }
-    if (data[0] > object_3[0][0] && data[0] < object_3[0][1]){
-        if (data[1] > object_3[1][0] && data[1] < object_3[1][1]){
-            if (data[2] > object_3[2][0] && data[2] < object_3[2][1]){
+    if (point[0] > object_3[0][0] && point[0] < object_3[0][1]){
+        if (point[1] > object_3[1][0] && point[1] < object_3[1][1]){
+            if (point[2] > object_3[2][0] && point[2] < object_3[2][1]){
                 intersect = true;
             }
         }
@@ -92,6 +107,12 @@ bool intesect_object(double *data) {
 
 void generate_points(double intervals[3][2], double data[POINTS_DATA][3])
 {
+    /**
+     * @brief Generates data points to use path planning algorithm
+     * 
+     * @param intervals The workspace intervals without the avoiding objects 
+     * @param data Data points generated randomly to make path planning
+     */
     double x_interval[2] = {intervals[0][0], intervals[0][1]};
     double y_interval[2] = {intervals[1][0], intervals[1][1]};
     double z_interval[2] = {intervals[2][0], intervals[2][1]};
@@ -114,7 +135,15 @@ void generate_points(double intervals[3][2], double data[POINTS_DATA][3])
     }
 }
 
-std::list<double*> connect_points(double data[POINTS_DATA+5][3]){
+std::list<double*> connect_points(double data[POINTS_DATA+5][3])
+{
+    /**
+     * @brief Connect points through the nearest neighbor and a distance limit
+     * 
+     * @param data Data points generated randomly to make path planning
+     * 
+     * @return Connections between data points
+     */
     std::list<double*> connections;
     double distance_limit = 0.1;
     double interpolate_points = 50;
@@ -160,6 +189,13 @@ std::list<double*> connect_points(double data[POINTS_DATA+5][3]){
 
 std::list<double*> dijkstra(std::list<double*> links, int init, int end)
 {
+    /**
+     * @brief Apply the Dijkstra algorithm over the connections to reach the desired points
+     * 
+     * @param links Conectors betweem data points
+     * @param init First point id
+     * @param init Last point id
+     */
     std::list<std::list<double*>> paths;
     std::list<int> used;
     int current_data_id = init;
@@ -228,7 +264,7 @@ std::list<double*> dijkstra(std::list<double*> links, int init, int end)
                 {
                     paths.remove(*pt);
                     std::list<double*> new_path(current_path);
-                    new_path.push_back(new double [3] {(double)link_id, distance, (double)next_point});//Id del intervalo no it
+                    new_path.push_back(new double [3] {(double)link_id, distance, (double)next_point});
                     paths.push_back(new_path);
                     is_in_path = true;
                 }
@@ -238,7 +274,7 @@ std::list<double*> dijkstra(std::list<double*> links, int init, int end)
             {
                 double distance = aux[2];
                 std::list<double*> new_path;
-                new_path.push_back(new double [3] {(double)link_id, distance, (double)next_point});//Id del intervalo no it
+                new_path.push_back(new double [3] {(double)link_id, distance, (double)next_point});
                 paths.push_back(new_path);
             }
             else if (!is_in_path)
@@ -246,7 +282,7 @@ std::list<double*> dijkstra(std::list<double*> links, int init, int end)
                 double *last_node = current_path.back();
                 double distance = last_node[1] + aux[2];
                 std::list<double*> new_path(current_path);
-                new_path.push_back(new double[3] {(double)link_id, distance, (double)next_point});//Id del intervalo no it
+                new_path.push_back(new double[3] {(double)link_id, distance, (double)next_point});
                 paths.push_back(new_path);
             }
             link_id++;
@@ -280,7 +316,7 @@ int main(int argc, char **argv)
     my_pt.velocities.resize(5);
     my_pt.accelerations.resize(5);
 
-    int checkpoint_data = 1;//atoi(argv[1]);
+    int checkpoint_data = atoi(argv[1]);
     double tfs = 10;
     double* steps = new double[5];
     steps[0] = 1; steps[1] = 1; steps[2] = 50; steps[3] = 1; steps[4] = 50;

@@ -3,7 +3,7 @@
   <arg name="gui" default="true"/>
   <arg name="rviz" default="true"/>
   <arg name="trajectory_interface" default="true"/>
-  <arg name="question" default="1"/>
+  <arg name="question" default="2"/>
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="paused" value="false"/>
 
